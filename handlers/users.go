@@ -56,7 +56,7 @@ func LoginUser(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		expirationTime := time.Now().Add(5 * time.Minute)
+		expirationTime := time.Now().Add(10 * time.Minute)
 		claims := &jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 			IssuedAt:  time.Now().Unix(),

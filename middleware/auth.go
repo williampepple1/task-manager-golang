@@ -1,19 +1,43 @@
 package middleware
 
 import (
+	"strings"
+
+	"log"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
-// JWT key used to create the signature.
-// This should ideally come from a more secure source such as environment variables.
-var jwtKey = []byte("secret_key")
+func init() {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+}
 
-// Authorize ensures the token is valid and sets the user's information in the context.
+// JWT key used to create the signature.
+// var jwtKey = os.Getenv("JWT_SECRET_KEY")
+var jwtKey = "JWT_SECRET_KEY"
+
 func Authorize() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract the token from the Authorization header
-		tokenStr := c.GetHeader("Authorization")
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(401, gin.H{"error": "Authorization header not provided"})
+			c.Abort()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.JSON(401, gin.H{"error": "Authorization header format must be Bearer {token}"})
+			c.Abort()
+			return
+		}
+
+		tokenStr := parts[1]
 
 		claims := &jwt.StandardClaims{}
 		tkn, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
@@ -22,7 +46,7 @@ func Authorize() gin.HandlerFunc {
 
 		if err != nil || !tkn.Valid {
 			c.JSON(401, gin.H{"error": "Unauthorized"})
-			c.Abort() // abort further handlers
+			c.Abort()
 			return
 		}
 
