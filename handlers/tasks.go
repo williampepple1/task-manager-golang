@@ -1,86 +1,82 @@
 package handlers
 
 import (
-	"fmt"
-	"github.com/gin-gonic/gin"
 	"task-manager/models"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
-func ListTasks(c *gin.Context) {
-	models.TasksMu.RLock()
-	defer models.TasksMu.RUnlock()
-	c.JSON(200, models.Tasks)
-}
-
-// ... other handler functions (e.g., CreateTask, GetTask, etc.) remain mostly unchanged
-
-func createTask(c *gin.Context) {
-	var task Task
-	if err := c.ShouldBindJSON(&task); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	tasksMu.Lock()
-	task.ID = nextID
-	nextID++
-	tasks = append(tasks, &task)
-	tasksMu.Unlock()
-
-	c.JSON(201, task)
-}
-
-func getTask(c *gin.Context) {
-	id := c.Param("id")
-
-	tasksMu.RLock()
-	defer tasksMu.RUnlock()
-
-	for _, t := range tasks {
-		if fmt.Sprintf("%d", t.ID) == id {
-			c.JSON(200, t)
+func ListTasks(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var tasks []models.Task
+		if err := db.Find(&tasks).Error; err != nil {
+			c.JSON(500, gin.H{"error": "Failed to retrieve tasks"})
 			return
 		}
+		c.JSON(200, tasks)
 	}
-	c.JSON(404, gin.H{"error": "Task not found"})
 }
 
-func updateTask(c *gin.Context) {
-	id := c.Param("id")
-	var task Task
-
-	if err := c.ShouldBindJSON(&task); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	tasksMu.Lock()
-	defer tasksMu.Unlock()
-
-	for _, t := range tasks {
-		if fmt.Sprintf("%d", t.ID) == id {
-			t.Title = task.Title
-			c.JSON(200, t)
+func CreateTask(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var task models.Task
+		if err := c.ShouldBindJSON(&task); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-	}
 
-	c.JSON(404, gin.H{"error": "Task not found"})
+		if err := db.Create(&task).Error; err != nil {
+			c.JSON(500, gin.H{"error": "Failed to create task"})
+			return
+		}
+
+		c.JSON(201, task)
+	}
 }
 
-func deleteTask(c *gin.Context) {
-	id := c.Param("id")
+func GetTask(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
 
-	tasksMu.Lock()
-	defer tasksMu.Unlock()
-
-	for i, t := range tasks {
-		if fmt.Sprintf("%d", t.ID) == id {
-			tasks = append(tasks[:i], tasks[i+1:]...)
-			c.JSON(200, gin.H{"message": "Task deleted"})
+		var task models.Task
+		if err := db.Where("id = ?", id).First(&task).Error; err != nil {
+			c.JSON(404, gin.H{"error": "Task not found"})
 			return
 		}
-	}
 
-	c.JSON(404, gin.H{"error": "Task not found"})
+		c.JSON(200, task)
+	}
+}
+
+func UpdateTask(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var task models.Task
+
+		if err := c.ShouldBindJSON(&task); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		if err := db.Where("id = ?", id).Save(&task).Error; err != nil {
+			c.JSON(500, gin.H{"error": "Failed to update task"})
+			return
+		}
+
+		c.JSON(200, task)
+	}
+}
+
+func DeleteTask(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		if err := db.Where("id = ?", id).Delete(&models.Task{}).Error; err != nil {
+			c.JSON(500, gin.H{"error": "Failed to delete task"})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "Task deleted successfully"})
+	}
 }
