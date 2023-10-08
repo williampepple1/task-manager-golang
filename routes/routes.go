@@ -1,10 +1,11 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 	"task-manager/handlers"
 	"task-manager/middleware"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
