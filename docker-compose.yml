@@ -9,8 +9,8 @@ services:
       - "8080:8080"
     environment:
       - DATABASE_HOST=taskmanager-db
-      - DATABASE_USER=myuser
-      - DATABASE_PASSWORD=mypassword
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
       - DATABASE_NAME=taskmanager
       - JWT_SECRET_KEY=myjwtsecret
     depends_on:
@@ -19,9 +19,11 @@ services:
   taskmanager-db:
     image: postgres:13
     environment:
-      - POSTGRES_USER=myuser
-      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=taskmanager
+    ports:
+      - "5433:5432"  # Map port 5432 in the container to port 5433 on the host
     volumes:
       - taskmanager-db-data:/var/lib/postgresql/data
 
