@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  taskmanager-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_HOST=taskmanager-db
+      - DATABASE_USER=myuser
+      - DATABASE_PASSWORD=mypassword
+      - DATABASE_NAME=taskmanager
+      - JWT_SECRET_KEY=myjwtsecret
+    depends_on:
+      - taskmanager-db
+
+  taskmanager-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=taskmanager
+    volumes:
+      - taskmanager-db-data:/var/lib/postgresql/data
+
+volumes:
+  taskmanager-db-data:
