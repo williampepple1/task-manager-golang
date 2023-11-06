@@ -62,6 +62,7 @@ func LoginUser(db *gorm.DB) gin.HandlerFunc {
 			ExpiresAt: expirationTime.Unix(),
 			IssuedAt:  time.Now().Unix(),
 			Subject:   user.Username,
+			Id:        user.ID.String(),
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

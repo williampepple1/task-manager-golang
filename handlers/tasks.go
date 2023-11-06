@@ -60,12 +60,12 @@ func CreateTask(db *gorm.DB, secretKey string) gin.HandlerFunc {
 		}
 
 		// Extract the user ID from the token claims
-		userIDStr, ok := claims["user_id"].(string)
+		userIDStr, ok := claims["Id"].(string)
 		if !ok {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract user ID from token"})
 			return
 		}
-
+		fmt.Println(userIDStr)
 		userID, err := uuid.Parse(userIDStr)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse user ID as UUID"})
