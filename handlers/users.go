@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"os"
 	"task-manager/models"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtKey = []byte("secret_key")
+var jwtKey = os.Getenv("JWT_SECRET_KEY")
 
 func RegisterUser(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -64,7 +65,7 @@ func LoginUser(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString(jwtKey)
+		tokenString, err := token.SignedString([]byte(jwtKey))
 
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to generate token"})
