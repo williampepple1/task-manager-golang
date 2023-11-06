@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"os"
 	"strings"
 
 	"log"
@@ -10,16 +11,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// JWT key used to create the signature.
+var jwtKey = os.Getenv("JWT_SECRET_KEY")
+
 func init() {
 	// Load .env file if it exists
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 }
-
-// JWT key used to create the signature.
-// var jwtKey = os.Getenv("JWT_SECRET_KEY")
-var jwtKey = "JWT_SECRET_KEY"
 
 func Authorize() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -41,7 +41,7 @@ func Authorize() gin.HandlerFunc {
 
 		claims := &jwt.StandardClaims{}
 		tkn, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
+			return []byte(jwtKey), nil
 		})
 
 		if err != nil || !tkn.Valid {
