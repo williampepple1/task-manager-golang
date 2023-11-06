@@ -52,6 +52,7 @@ func Authorize() gin.HandlerFunc {
 
 		// Set the username in the context for subsequent handlers to use
 		c.Set("username", claims.Subject)
+		c.Set("userId", claims.Id)
 		c.Next() // proceed to next middleware or handler
 	}
 }

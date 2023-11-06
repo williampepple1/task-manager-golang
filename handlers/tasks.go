@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
+	"reflect"
 	"task-manager/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
@@ -23,71 +21,36 @@ func ListTasks(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func CreateTask(db *gorm.DB, secretKey string) gin.HandlerFunc {
+func CreateTask(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract the Bearer token from the Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
-			return
-		}
-
-		// Split the header to get the token part
-		headerParts := strings.Split(authHeader, " ")
-		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be Bearer {token}"})
-			return
-		}
-
-		// Parse the token
-		tokenString := headerParts[1]
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(secretKey), nil
-		})
-
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			return
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			return
-		}
-
-		// Extract the user ID from the token claims
-		userIDStr, ok := claims["Id"].(string)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract user ID from token"})
-			return
-		}
-		fmt.Println(userIDStr)
-		userID, err := uuid.Parse(userIDStr)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse user ID as UUID"})
-			return
-		}
-
-		// Continue with the usual creation logic, now using the userID...
 		var task models.Task
 		if err := c.ShouldBindJSON(&task); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
 
-		// Here you would assign the userID to the task object, assuming it has an attribute for it
-		task.UserID = userID // This assumes that the Task model has a UserID field of type uuid.UUID
+		userID , exists := c.Get("userId")
+		fmt.Println(userID)
+		fmt.Println("type:", reflect.TypeOf(userID))
+		if !exists {
+			c.JSON(401, gin.H{"error": "User ID not found"})
+			return
+		}
+
+		id, ok := userID.(uuid.UUID)
+		if !ok {
+			c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
+			return
+		}
+
+		task.UserID = id // Assign the user's UUID to the task's ID
 
 		if err := db.Create(&task).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
+			c.JSON(500, gin.H{"error": "Failed to create task"})
 			return
 		}
 
-		c.JSON(http.StatusCreated, task)
+		c.JSON(201, task)
 	}
 }
 
