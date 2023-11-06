@@ -33,7 +33,7 @@ func RegisterUser(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, gin.H{"message": "User registered successfully"})
+		c.JSON(200, gin.H{"message": "User registered successfully", "id": user.ID})
 	}
 }
 
