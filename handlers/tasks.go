@@ -55,6 +55,17 @@ func CreateTask(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": "Failed to create task"})
 			return
 		}
+		// Now load the user associated with the task and update the task.User
+		var user models.User
+		if err := db.Where("id = ?", task.UserID).First(&user).Error; err != nil {
+			// Handle the error. Perhaps the user does not exist in the DB
+			c.JSON(500, gin.H{"error": "Failed to load user data"})
+			return
+		}
+
+		task.User = user // Assuming your Task struct has a User field to hold this data
+
+		// Now task should have the User data included
 
 		c.JSON(201, task)
 	}
