@@ -55,21 +55,21 @@ func CreateTask(db *gorm.DB) gin.HandlerFunc {
 		// Retrieve the user ID from the context
 		userID, exists := c.Get("userId")
 		if !exists {
-			c.JSON(401, gin.H{"error": "User ID not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "User ID not found"})
 			return
 		}
 
 		// Assert that userID is of type string
 		userStrId, ok := userID.(string)
 		if !ok {
-			c.JSON(400, gin.H{"error": "User ID is not of type string"})
+			c.JSON(http.StatusNotAcceptable, gin.H{"error": "User ID is not of type string"})
 			return
 		}
 
 		// Parse the user ID from string to uuid.UUID
 		id, err := uuid.Parse(userStrId)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
+			c.JSON(http.StatusNotAcceptable, gin.H{"error": "User ID is not a valid UUID"})
 			return
 		}
 
@@ -77,7 +77,7 @@ func CreateTask(db *gorm.DB) gin.HandlerFunc {
 
 		// Create the task in the DB
 		if err := db.Create(&task).Error; err != nil {
-			c.JSON(500, gin.H{"error": "Failed to create task"})
+			c.JSON(http.StatusNotImplemented, gin.H{"error": "Failed to create task"})
 			return
 		}
 		// Now load the user associated with the task and update the task.User
@@ -92,7 +92,7 @@ func CreateTask(db *gorm.DB) gin.HandlerFunc {
 
 		// Now task should have the User data included
 
-		c.JSON(201, task)
+		c.JSON(http.StatusCreated, task)
 	}
 }
 
@@ -106,7 +106,7 @@ func GetTask(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, task)
+		c.JSON(http.StatusOK, task)
 	}
 }
 
@@ -167,7 +167,7 @@ func DeleteTask(db *gorm.DB) gin.HandlerFunc {
 
 		// Now you can compare the UserID from the task with the user's UUID
 		if userUUID != task.UserID {
-			c.JSON(403, gin.H{"error": "You are not allowed to delete this task"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not allowed to delete this task"})
 			return
 		}
 
@@ -177,6 +177,6 @@ func DeleteTask(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, gin.H{"message": "Task deleted successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 	}
 }
