@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	"net/http"
 	"os"
 	"task-manager/models"
 	"time"
@@ -17,23 +19,40 @@ func RegisterUser(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var user models.User
 		if err := c.ShouldBindJSON(&user); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
+		// Check if username already exists
+		var existingUser models.User
+		result := db.Where("username = ?", user.Username).First(&existingUser)
+		if result.Error == nil {
+			// User with the same username already exists
+			c.JSON(http.StatusConflict, gin.H{"error": "Username already taken"})
+			return
+		}
+
+		// Check if the error is not a 'record not found' error
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing username"})
+			return
+		}
+
+		// Continue with password encryption and user creation
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to encrypt password"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encrypt password"})
 			return
 		}
 		user.Password = string(hashedPassword)
 
+		// Create user if username does not exist
 		if err := db.Create(&user).Error; err != nil {
-			c.JSON(500, gin.H{"error": "Failed to register user"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
 			return
 		}
 
-		c.JSON(200, gin.H{"message": "User registered successfully", "id": user.ID})
+		c.JSON(http.StatusOK, gin.H{"message": "User registered successfully", "id": user.ID})
 	}
 }
 

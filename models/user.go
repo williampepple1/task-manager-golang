@@ -10,7 +10,7 @@ type User struct {
 	ID        uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Username  string    `json:"username"`
+	Username  string    `gorm:"unique" json:"username"`
 	Password  string    `json:"password"`
 	Tasks     []Task    `gorm:"foreignkey:UserID"` // This indicates a one-to-many relationship
 }
