@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"fmt"
 	"task-manager/models"
 
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +74,7 @@ func CreateTask(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		task.UserID = id // Assign the user's UUID to the task's UserID field
-		fmt.Println(task.UserID)
+
 		// Create the task in the DB
 		if err := db.Create(&task).Error; err != nil {
 			c.JSON(500, gin.H{"error": "Failed to create task"})
@@ -131,9 +131,48 @@ func UpdateTask(db *gorm.DB) gin.HandlerFunc {
 
 func DeleteTask(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.Param("id")
+		id := c.Param("id") // This is the task's ID
+		var task models.Task
 
-		if err := db.Where("id = ?", id).Delete(&models.Task{}).Error; err != nil {
+		// Retrieve the user ID from the context
+		userID, exists := c.Get("userId")
+		if !exists {
+			c.JSON(401, gin.H{"error": "User ID not found"})
+			return
+		}
+
+		// Assert that userID is of type string
+		userStrId, ok := userID.(string)
+		if !ok {
+			c.JSON(400, gin.H{"error": "User ID is not of type string"})
+			return
+		}
+
+		// Parse the user ID from string to uuid.UUID
+		userUUID, err := uuid.Parse(userStrId)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
+			return
+		}
+
+		// Find the task by ID and retrieve it along with its UserID
+		if err := db.Where("id = ?", id).First(&task).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(404, gin.H{"error": "Task not found"})
+			} else {
+				c.JSON(500, gin.H{"error": "Failed to retrieve task"})
+			}
+			return
+		}
+
+		// Now you can compare the UserID from the task with the user's UUID
+		if userUUID != task.UserID {
+			c.JSON(403, gin.H{"error": "You are not allowed to delete this task"})
+			return
+		}
+
+		// If the user IDs match, delete the task
+		if err := db.Delete(&task).Error; err != nil {
 			c.JSON(500, gin.H{"error": "Failed to delete task"})
 			return
 		}
