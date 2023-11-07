@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strings"
 	"task-manager/models"
 	"time"
 
@@ -23,11 +24,13 @@ func RegisterUser(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Check if username already exists
+		// Keep a lowercase version of the username for checking duplicates and saving
+		lowerUsername := strings.ToLower(user.Username)
+
+		// Check if a lowercase username already exists
 		var existingUser models.User
-		result := db.Where("username = ?", user.Username).First(&existingUser)
+		result := db.Where("lower(username) = ?", lowerUsername).First(&existingUser)
 		if result.Error == nil {
-			// User with the same username already exists
 			c.JSON(http.StatusConflict, gin.H{"error": "Username already taken"})
 			return
 		}
@@ -46,7 +49,10 @@ func RegisterUser(db *gorm.DB) gin.HandlerFunc {
 		}
 		user.Password = string(hashedPassword)
 
-		// Create user if username does not exist
+		// Use the lowercase username when saving to the database
+		user.Username = lowerUsername
+
+		// Create User
 		if err := db.Create(&user).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
 			return
