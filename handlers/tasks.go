@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"task-manager/models"
 
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
@@ -17,6 +19,29 @@ func ListTasks(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, tasks)
+	}
+}
+
+func ListUserTasks(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Extract the user ID from the URL parameter.
+		userIDStr := c.Param("userId")
+
+		// Validate that the userID is a valid UUID
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is not a valid UUID"})
+			return
+		}
+
+		var tasks []models.Task
+		// Find tasks where the UserID matches the provided UUID.
+		if err := db.Where("user_id = ?", userID).Find(&tasks).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tasks for the user"})
+			return
+		}
+
+		c.JSON(http.StatusOK, tasks)
 	}
 }
 func CreateTask(db *gorm.DB) gin.HandlerFunc {
