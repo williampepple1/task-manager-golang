@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"reflect"
 	"task-manager/models"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +19,6 @@ func ListTasks(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(200, tasks)
 	}
 }
-
 func CreateTask(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var task models.Task
@@ -29,22 +27,30 @@ func CreateTask(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		userID , exists := c.Get("userId")
-		fmt.Println(userID)
-		fmt.Println("type:", reflect.TypeOf(userID))
+		// Retrieve the user ID from the context
+		userID, exists := c.Get("userId")
 		if !exists {
 			c.JSON(401, gin.H{"error": "User ID not found"})
 			return
 		}
 
-		id, ok := userID.(uuid.UUID)
+		// Assert that userID is of type string
+		userStrId, ok := userID.(string)
 		if !ok {
+			c.JSON(400, gin.H{"error": "User ID is not of type string"})
+			return
+		}
+
+		// Parse the user ID from string to uuid.UUID
+		id, err := uuid.Parse(userStrId)
+		if err != nil {
 			c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
 			return
 		}
 
-		task.UserID = id // Assign the user's UUID to the task's ID
-
+		task.UserID = id // Assign the user's UUID to the task's UserID field
+		fmt.Println(task.UserID)
+		// Create the task in the DB
 		if err := db.Create(&task).Error; err != nil {
 			c.JSON(500, gin.H{"error": "Failed to create task"})
 			return
