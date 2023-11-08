@@ -18,7 +18,7 @@ func ListTasks(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": "Failed to retrieve tasks"})
 			return
 		}
-		c.JSON(200, tasks)
+		c.JSON(http.StatusOK, tasks)
 	}
 }
 
