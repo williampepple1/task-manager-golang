@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"task-manager/models"
 
 	"errors"
@@ -11,6 +10,50 @@ import (
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
+
+// Helper function to retrieve and validate user ID and task
+func getUserIDAndTask(c *gin.Context, db *gorm.DB, taskId string) (uuid.UUID, models.Task, bool) {
+	var task models.Task
+
+	// Retrieve the user ID from the context
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(401, gin.H{"error": "User ID not found"})
+		return uuid.Nil, task, false
+	}
+
+	// Assert that userID is of type string
+	userStrId, ok := userID.(string)
+	if !ok {
+		c.JSON(400, gin.H{"error": "User ID is not of type string"})
+		return uuid.Nil, task, false
+	}
+
+	// Parse the user ID from string to uuid.UUID
+	userUUID, err := uuid.Parse(userStrId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
+		return uuid.Nil, task, false
+	}
+
+	// Find the task by ID and retrieve it along with its UserID
+	if err := db.Where("id = ?", taskId).First(&task).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(404, gin.H{"error": "Task not found"})
+		} else {
+			c.JSON(500, gin.H{"error": "Failed to retrieve task"})
+		}
+		return uuid.Nil, task, false
+	}
+
+	// Check if the user is authorized to access the task
+	if userUUID != task.UserID {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized to access this task"})
+		return uuid.Nil, task, false
+	}
+
+	return userUUID, task, true
+}
 
 func ListTasks(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -114,44 +157,15 @@ func GetTask(db *gorm.DB) gin.HandlerFunc {
 func UpdateTask(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var task models.Task
 
-		//  Retrieve the user Id from the context
-		userID, exists := c.Get("userId")
-		fmt.Println(userID)
-
-		if !exists {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-			return
-		}
-
-		// Assert that userID is of type string
-		userStrId, ok := userID.(string)
+		// Use the helper function to get the user ID and task
+		userUUID, task, ok := getUserIDAndTask(c, db, id)
 		if !ok {
-			c.JSON(400, gin.H{"error": "User ID is not of type string"})
-			return
+			return // The response is already handled in the helper function
 		}
-
-		// Parse the user ID from string to uuid.UUID
-		userUUID, err := uuid.Parse(userStrId)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
-			return
-		}
-
-		// Find the task by ID and retrieve it along with its UserID
-		if err := db.Where("id = ?", id).First(&task).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.JSON(404, gin.H{"error": "Task not found"})
-			} else {
-				c.JSON(500, gin.H{"error": "Failed to retrieve task"})
-			}
-			return
-		}
-
 		// Now you can compare the UserID from the task with the user's UUID
 		if userUUID != task.UserID {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not allowed to delete this task"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not allowed to update this task"})
 			return
 		}
 
@@ -172,42 +186,14 @@ func UpdateTask(db *gorm.DB) gin.HandlerFunc {
 func DeleteTask(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id") // This is the task's ID
-		var task models.Task
 
-		// Retrieve the user ID from the context
-		userID, exists := c.Get("userId")
-		if !exists {
-			c.JSON(401, gin.H{"error": "User ID not found"})
-			return
-		}
-
-		// Assert that userID is of type string
-		userStrId, ok := userID.(string)
+		userUUID, task, ok := getUserIDAndTask(c, db, id)
 		if !ok {
-			c.JSON(400, gin.H{"error": "User ID is not of type string"})
-			return
+			return // The response is already handled in the helper function
 		}
-
-		// Parse the user ID from string to uuid.UUID
-		userUUID, err := uuid.Parse(userStrId)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "User ID is not a valid UUID"})
-			return
-		}
-
-		// Find the task by ID and retrieve it along with its UserID
-		if err := db.Where("id = ?", id).First(&task).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				c.JSON(404, gin.H{"error": "Task not found"})
-			} else {
-				c.JSON(500, gin.H{"error": "Failed to retrieve task"})
-			}
-			return
-		}
-
 		// Now you can compare the UserID from the task with the user's UUID
 		if userUUID != task.UserID {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not allowed to delete this task"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not allowed to update this task"})
 			return
 		}
 
