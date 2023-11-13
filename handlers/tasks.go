@@ -161,7 +161,7 @@ func UpdateTask(db *gorm.DB) gin.HandlerFunc {
 		// Use the helper function to get the user ID and task
 		userUUID, task, ok := getUserIDAndTask(c, db, id)
 		if !ok {
-			return // The response is already handled in the helper function
+			return
 		}
 		// Now you can compare the UserID from the task with the user's UUID
 		if userUUID != task.UserID {
@@ -189,7 +189,7 @@ func DeleteTask(db *gorm.DB) gin.HandlerFunc {
 
 		userUUID, task, ok := getUserIDAndTask(c, db, id)
 		if !ok {
-			return // The response is already handled in the helper function
+			return
 		}
 		// Now you can compare the UserID from the task with the user's UUID
 		if userUUID != task.UserID {
